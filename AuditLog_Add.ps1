@@ -1,38 +1,28 @@
-﻿# Defina o diretório onde os logs serão salvos
 $logDirectory = "C:\AuditLogs"
 if (!(Test-Path -Path $logDirectory)) {
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-# Defina a data atual
 $currentDate = Get-Date -Format "yyyy-MM-dd"
 
-# Defina o caminho do arquivo de log para adições
 $logFilePath = "$logDirectory\auditlog-adicionados-$currentDate.txt"
 
 try {
-    # Coletar eventos de adição de grupo
     $events = Get-WinEvent -FilterHashtable @{
         LogName = 'Security';
         Id = 4728, 4732;
         StartTime = (Get-Date).AddDays(-1)
     } | ForEach-Object {
-        # Converter o evento para XML para fácil manipulação
         $eventXml = [xml]$_.ToXml()
-
-        # Inicializar uma lista para armazenar todas as informações do evento
         $eventDetails = @()
 
-        # Iterar sobre todos os elementos no XML do evento
+        
         foreach ($dataNode in $eventXml.Event.EventData.Data) {
             $nodeName = $dataNode.Name
             $nodeValue = $dataNode.'#text'
-
-            # Formatar cada informação como uma linha de texto
             $eventDetails += "$nodeName $nodeValue"
         }
 
-        # Formatar a string com todas as informações do evento
         $eventDetailsString = @"
 Ação:                "Adicionado"
 Data e Hora:         $($_.TimeCreated)
@@ -43,11 +33,9 @@ Usuário:             $($eventXml.Event.EventData.Data | Where-Object { $_.Name 
 
 "@
 
-        # Escrever no arquivo de log
         Add-Content -Path $logFilePath -Value $eventDetailsString
     }
-
-    # Verificar se há eventos coletados
+    
     if ($events.Count -eq 0) {
         Write-Host "Nenhum evento de adição de grupo encontrado."
     } else {
@@ -57,7 +45,6 @@ Usuário:             $($eventXml.Event.EventData.Data | Where-Object { $_.Name 
     Write-Host "Erro ao coletar eventos de adição de grupo: $_"
 }
 
-# Verificar se o arquivo de log foi criado para adições
 if (!(Test-Path -Path $logFilePath)) {
     Write-Host "O arquivo de log para adições não foi criado em $logFilePath."
 }
